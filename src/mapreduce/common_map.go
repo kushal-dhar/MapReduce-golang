@@ -2,11 +2,9 @@ package mapreduce
 
 import (
 	"hash/fnv"
-  "fmt"
 	"io/ioutil"
 	"log"
 	"os"
-	"bufio"
 )
 
 func doMap(
@@ -68,39 +66,31 @@ func doMap(
 	fileName := make([]string, nReduce)
 	for i := 0; i < nReduce; i++ {
 		fileName[i] = reduceName(jobName, mapTask, i)
-		file, err := os.Create(fileName[i])
-		if err != nil {
-			log.Fatal(err)
-		}
+		//file, err := os.Create(fileName[i])
+		//if err != nil {
+		//	log.Fatal(err)
+		//}
 
-		file.Close()
+		//file.Close()
 	}
 
 	key := mapF(inFile, stringContent)
 
 	for _, eachKey := range key {
 		reduce := ihash(eachKey.Key) % nReduce
-		fmt.Println(reduce, fileName[reduce])
-		file, err := os.OpenFile(fileName[reduce], os.O_APPEND, 0666)
+
+		file, err := os.OpenFile(fileName[reduce], os.O_APPEND|os.O_WRONLY, 0666)
 		if err != nil {
-			fmt.Println("I am here", err)
+			file, _ = os.Create(fileName[reduce])
 			log.Fatal(err)
 		}
 
-		writer := bufio.NewWriter(file)
-		fmt.Println(writer, eachKey.Key+" "+eachKey.Key + "\n")
-
-		//_, err = file.WriteString(eachKey.Key+" "+eachKey.Key + "\n")
-		//if err != nil {
-		//	log.Fatal(err)
-		//}
-
+		stringTemp := eachKey.Key + " " + eachKey.Key + "\n"
+		file.WriteString(stringTemp)
+		//fmt.Println(writer, string[i])
 		file.Close()
 	}
 
-	fmt.Println("HERE I AM ")
-	//contents, _ = ioutil.ReadFile(fileName[0])
-	//fmt.Println("contents are: ",string(contents))
 	return
 }
 
