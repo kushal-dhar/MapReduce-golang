@@ -1,6 +1,9 @@
 package mapreduce
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 //
 // schedule() starts and waits for all tasks in the given phase (mapPhase
@@ -16,13 +19,59 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
 	var n_other int // number of inputs (for reduce) or outputs (for map)
 	switch phase {
 	case mapPhase:
+		fmt.Println("phase: ",phase)
 		ntasks = len(mapFiles)
 		n_other = nReduce
 	case reducePhase:
+		fmt.Println("phase: ",phase)
 		ntasks = nReduce
 		n_other = len(mapFiles)
 	}
 
+	group := new(sync.WaitGroup)
+
+	for i := 0; i < ntasks; i++ {
+		var file string
+		switch phase {
+		case mapPhase:
+			file = mapFiles[i]
+		case reducePhase:
+			file = ""
+		}
+
+		arg := &DoTaskArgs{
+			JobName: jobName,
+			File: file,
+			Phase: phase,
+			TaskNumber: i,
+			NumOtherPhase: n_other,
+		}
+		group.Add(1)
+
+		go func() {
+			for worker := range registerChan {
+				status := call(worker, "Worker.DoTask", arg, new(struct{}))
+				fmt.Println(status)
+				if status {
+					go func() {
+						registerChan <- worker
+					} ()
+					break
+				}
+			}
+			group.Done()
+		} ()
+	}
+	group.Wait()
+
+	//fmt.Println("inside schedule: ",registerChan);
+	/* if state == 0 {
+		for i, file := range mapFiles {
+			funcName := <- registerChan
+			//fmt.Println("in for", funcName, file, i)
+			funcName()
+		}
+	} */
 	fmt.Printf("Schedule: %v %v tasks (%d I/Os)\n", ntasks, phase, n_other)
 
 	// All ntasks tasks have to be scheduled on workers. Once all tasks

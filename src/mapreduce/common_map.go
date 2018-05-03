@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"fmt"
 )
 
 func doMap(
@@ -62,34 +63,46 @@ func doMap(
 		log.Fatal(err)
 	}
 	stringContent := string(contents)
-
-	fileName := make([]string, nReduce)
-	for i := 0; i < nReduce; i++ {
-		fileName[i] = reduceName(jobName, mapTask, i)
-		//file, err := os.Create(fileName[i])
-		//if err != nil {
-		//	log.Fatal(err)
-		//}
-
-		//file.Close()
-	}
-
+	//fmt.Println(stringContent)
 	key := mapF(inFile, stringContent)
 
+	fileName := make([]string, nReduce)
+
+	for i := 0; i < nReduce; i++ {
+		fileName[i] = reduceName(jobName, mapTask, i)
+		//fmt.Println(fileName[i])
+		file, err := os.Create(fileName[i])
+		if err != nil {
+			fmt.Println("I am here", fileName[i])
+			log.Fatal(err)
+		}
+
+		for _, eachKey := range key {
+			reduce := ihash(eachKey.Key) % nReduce
+			if reduce == i {
+				stringTemp := eachKey.Key + " " + eachKey.Value + "\n"
+				file.WriteString(stringTemp)
+			}
+		}
+		file.Close()
+	}
+
+	/*
 	for _, eachKey := range key {
 		reduce := ihash(eachKey.Key) % nReduce
 
 		file, err := os.OpenFile(fileName[reduce], os.O_APPEND|os.O_WRONLY, 0666)
+		fmt.Println(fileName[reduce])
 		if err != nil {
+			fmt.Println("I am here now", fileName[reduce])
 			file, _ = os.Create(fileName[reduce])
 			log.Fatal(err)
-		}
+		}}
 
 		stringTemp := eachKey.Key + " " + eachKey.Key + "\n"
 		file.WriteString(stringTemp)
-		//fmt.Println(writer, string[i])
 		file.Close()
-	}
+	} */
 
 	return
 }
